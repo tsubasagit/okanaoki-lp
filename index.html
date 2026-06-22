@@ -60,6 +60,7 @@
   .scrim{position:fixed; inset:0; z-index:-2; pointer-events:none;
       background:linear-gradient(180deg,rgba(14,12,32,.30),rgba(14,12,32,.74))}
   .stars{position:fixed; inset:0; z-index:-1; pointer-events:none}
+  #ripple{position:fixed; inset:0; z-index:-1; pointer-events:none}
   .star{position:absolute; width:2px; height:2px; border-radius:50%;
       background:var(--text); opacity:0; animation:fly 3s ease-in-out infinite; will-change:transform,opacity}
   @keyframes fly{0%,100%{opacity:.05}50%{opacity:.7}}
@@ -194,7 +195,7 @@
     html{scroll-behavior:auto}
     .star,.btn,.scrolldown .ln,.appicon,.appicon-glow{animation:none}
     .star{opacity:.4}
-    #resonance,#tuneline{display:none}
+    #resonance,#tuneline,#ripple{display:none}
     .rise{opacity:1; transform:none; filter:none; transition:none}
   }
 </style>
@@ -207,6 +208,7 @@
   <div class="grain" aria-hidden="true"></div>
   <div class="scrim" aria-hidden="true"></div>
   <div class="stars" id="stars" aria-hidden="true"></div>
+  <canvas id="ripple" aria-hidden="true"></canvas>
 
   <!-- ───────── ヒーロー ───────── -->
   <header class="hero">
@@ -441,6 +443,44 @@
     }
     raf=requestAnimationFrame(frame);
     document.addEventListener('visibilitychange',function(){ if(document.hidden)cancelAnimationFrame(raf); else{t0=null;raf=requestAnimationFrame(frame);} });
+  })();
+
+  /* ── クリック/タップで波形（倍音リング）がふわっと広がる ── */
+  (function(){
+    var cv=document.getElementById('ripple'); if(!cv||REDUCE) return;
+    var ctx=cv.getContext('2d'), W=0,H=0;
+    function size(){ W=window.innerWidth; H=window.innerHeight; cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); cv.style.width=W+'px'; cv.style.height=H+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
+    size(); window.addEventListener('resize', size);
+    var ripples=[], raf=null, parts=[[1,1],[0.66,0.6],[0.4,0.36]];
+    function ringColor(p,a){ var r=lerp(124,96,p),g=lerp(98,206,p),b=lerp(214,224,p); return 'rgba('+(r|0)+','+(g|0)+','+(b|0)+','+a+')'; }
+    function loop(now){
+      ctx.clearRect(0,0,W,H); ctx.globalCompositeOperation='lighter';
+      for(var i=ripples.length-1;i>=0;i--){
+        var rp=ripples[i], age=(now-rp.born)/1000, life=1.05, p=age/life;
+        if(p>=1){ ripples.splice(i,1); continue; }
+        var R=150*Math.pow(p,0.68)*rp.scale, env=Math.sin(Math.PI*p), aBase=env*0.34;
+        for(var q=0;q<parts.length;q++){
+          var rr=R*parts[q][0], a=aBase*parts[q][1]; if(a<0.005) continue;
+          ctx.beginPath();
+          for(var s=0;s<=64;s++){
+            var ang=s/64*Math.PI*2;
+            var wob=1 + 0.05*Math.sin(2*ang + rp.seed*4 + age*3) + 0.03*Math.sin(3*ang + q);
+            var rad=rr*wob, x=rp.x+Math.cos(ang)*rad, y=rp.y+Math.sin(ang)*rad;
+            s===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+          }
+          ctx.closePath(); ctx.lineWidth=q===0?1.6:1; ctx.strokeStyle=ringColor(p,a); ctx.stroke();
+        }
+      }
+      ctx.globalCompositeOperation='source-over';
+      if(ripples.length){ raf=requestAnimationFrame(loop); } else { raf=null; ctx.clearRect(0,0,W,H); }
+    }
+    function spawn(x,y){
+      ripples.push({x:x,y:y,born:(window.performance&&performance.now)?performance.now():0,seed:Math.random(),scale:0.85+Math.random()*0.35});
+      if(ripples.length>14) ripples.shift();
+      if(!raf) raf=requestAnimationFrame(loop);
+    }
+    window.addEventListener('pointerdown', function(e){ spawn(e.clientX, e.clientY); }, {passive:true});
+    document.addEventListener('visibilitychange', function(){ if(document.hidden && raf){ cancelAnimationFrame(raf); raf=null; ripples.length=0; ctx.clearRect(0,0,W,H); } });
   })();
 
   /* ── 調律されて像を結ぶ：スクロールで焦点が合う ── */
