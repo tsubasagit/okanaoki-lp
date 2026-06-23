@@ -1,6 +1,6 @@
 # OKA — 個人ページ LP
 
-作曲家・OKA（株式会社ヌメロ.8 代表）の個人ページ。プロフィールと、音楽を体験できる **FLUX RING** をなぜつくったのか、を伝える 1 枚物の LP。
+プロフィールと、音楽を体験できる **FLUX RING** をなぜつくったのか、を伝える 1 枚物の LP。
 
 - 公開: https://tsubasagit.github.io/oka-lp/
 - 単一 HTML 完結（依存ゼロ）。`index.html` のみ。
